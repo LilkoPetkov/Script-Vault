@@ -1,19 +1,12 @@
 import time
-import secure
 import uvicorn
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-
 from addons.tags_metadata import tags_metadata
 from database.db import engine, Base, get_db
 from routers import user_router, token_router, script_router, settings_router
 
-# Headers
-csp = secure.ContentSecurityPolicy().default_src("'self'").frame_ancestors("'none'")
-hsts = secure.StrictTransportSecurity().max_age(31536000).include_subdomains()
-referrer = secure.ReferrerPolicy().no_referrer()
-cache_value = secure.CacheControl().no_cache().no_store().max_age(0).must_revalidate()
-x_frame_options = secure.XFrameOptions().deny()
 
 # SQL Engine binding
 Base.metadata.create_all(bind=engine)
@@ -38,6 +31,8 @@ app.add_middleware(
     CORSMiddleware,
 )
 
+# Use Prometheus middleware
+Instrumentator().instrument(app).expose(app)
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
